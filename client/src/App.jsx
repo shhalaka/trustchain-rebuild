@@ -23,8 +23,16 @@ function App() {
     <BrowserRouter>
       <div className="app">
         <header className="header">
-          <h1>TrustChain Docs</h1>
-          <p>Tamper-proof document verification on XDC blockchain</p>
+          <div className="header-content">
+            <div className="logo">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <rect width="32" height="32" rx="8" fill="#0070f3"/>
+                <path d="M16 8L24 24H8L16 8Z" fill="white"/>
+              </svg>
+              <h1>TrustChain</h1>
+            </div>
+            <p>Tamper-proof document verification on XDC blockchain</p>
+          </div>
         </header>
         <Nav />
         <main className="main">
@@ -34,6 +42,9 @@ function App() {
             <Route path="/history" element={<History />} />
           </Routes>
         </main>
+        <footer className="footer">
+          <p>Secured by XDC Network</p>
+        </footer>
       </div>
     </BrowserRouter>
   );

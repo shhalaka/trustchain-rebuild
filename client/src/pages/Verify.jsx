@@ -68,7 +68,7 @@ function Verify() {
               ) : (
                 <>
                   <span className="drop-zone-text">Click to select file</span>
-                  <span className="drop-zone-hint">or drag and drop</span>
+                  <span className="drop-zone-hint">Upload the original document</span>
                 </>
               )}
             </div>
@@ -90,10 +90,14 @@ function Verify() {
       </form>
 
       {result && (
-        <div className={`result ${result.status}`}>
+        <div className={`result ${result.status === 'tampered' ? 'tampered' : ''}`}>
           <h3>{result.message}</h3>
-          <p>Issuer: {result.issuer}</p>
-          <p>ZK Valid: {result.zkValid ? 'Yes' : 'No'}</p>
+          <p><strong>Issuer:</strong> {result.issuer}</p>
+          <p><strong>Document ID:</strong> {result.documentId}</p>
+          <p><strong>ZK Proof:</strong> {result.zkValid ? 'Valid' : 'Invalid'}</p>
+          <span className={`badge ${result.status === 'valid' ? 'badge-success' : 'badge-error'}`}>
+            {result.status === 'valid' ? 'Authentic' : 'Tampered'}
+          </span>
         </div>
       )}
     </div>

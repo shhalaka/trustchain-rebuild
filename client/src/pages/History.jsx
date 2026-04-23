@@ -23,14 +23,16 @@ function History() {
     }
   };
 
-  if (loading) return <div className="card">Loading...</div>;
+  if (loading) return <div className="card loading">Loading documents...</div>;
   if (error) return <div className="card error">{error}</div>;
 
   return (
     <div className="card">
       <h2>Issued Documents</h2>
       {documents.length === 0 ? (
-        <p>No documents yet</p>
+        <div className="empty-state">
+          <p>No documents issued yet</p>
+        </div>
       ) : (
         <table className="history-table">
           <thead>
@@ -39,7 +41,7 @@ function History() {
               <th>File Name</th>
               <th>Issuer</th>
               <th>Date</th>
-              <th>Transaction</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -53,9 +55,9 @@ function History() {
                   <a 
                     href={`https://explorer.apothem.network/txs/${doc.txHash}`}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                   >
-                    View
+                    View Tx
                   </a>
                 </td>
               </tr>

@@ -68,7 +68,7 @@ function Issue() {
               ) : (
                 <>
                   <span className="drop-zone-text">Click to select file</span>
-                  <span className="drop-zone-hint">or drag and drop</span>
+                  <span className="drop-zone-hint">PDF, JPG, or PNG up to 10MB</span>
                 </>
               )}
             </div>
@@ -91,9 +91,10 @@ function Issue() {
 
       {result && (
         <div className="result">
-          <h3>Document Issued</h3>
-          <p><strong>ID:</strong> {result.documentId}</p>
-          <p><strong>Tx:</strong> {result.txHash}</p>
+          <h3>Document Issued Successfully</h3>
+          <p><strong>Document ID:</strong> {result.documentId}</p>
+          <p><strong>Transaction:</strong> {result.txHash}</p>
+          <span className="badge badge-success">Verified on Blockchain</span>
         </div>
       )}
     </div>

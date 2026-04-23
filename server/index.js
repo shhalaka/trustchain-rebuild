@@ -25,7 +25,6 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
-app.use('/api/', limiter);
 
 mongoose.connect(process.env.MONGO_URI, {
   maxPoolSize: 10,
@@ -51,17 +50,7 @@ const upload = multer({
   }
 });
 
-app.use('/api/v1/auth', require('./routes/auth'));
-app.use('/api/v1/documents', require('./routes/documents'));
-
-app.post('/api/v1/upload', upload.single('file'), (req, res) => {
-  if (!req.file) {
-    throw new AppError('No file uploaded', 400);
-  }
-  const hash = generateHash(req.file.buffer);
-  success(res, { hash }, 'Hash generated');
-});
-
+// Public routes (no auth required)
 app.post('/api/v1/issue', upload.single('file'), asyncHandler(async (req, res) => {
   if (!req.file) {
     throw new AppError('No file uploaded', 400);
@@ -123,7 +112,8 @@ app.post('/api/v1/verify', upload.single('file'), asyncHandler(async (req, res) 
   }, 'Verification complete');
 }));
 
-app.get('/api/v1/documents', authMiddleware, asyncHandler(async (req, res) => {
+// Public documents route (no auth for now)
+app.get('/api/v1/documents', asyncHandler(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 20;
   const skip = (page - 1) * limit;
