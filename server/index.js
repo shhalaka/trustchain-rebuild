@@ -6,34 +6,61 @@ const compression = require('compression');
 const multer = require('multer');
 
 const { generateHash } = require('./utils/hash');
-const { issueOnChain, getHashFromChain } = require('./utils/xdc');
+const { issueOnChain, getHashFromChain, getBlockchainMode } = require('./utils/xdc');
 const { asyncHandler } = require('./utils/asyncHandler');
 const { success, error } = require('./utils/response');
-const { AppError } = require('./errors/AppError');
+const { AppError, ValidationError, NotFoundError } = require('./errors/AppError');
 
 const Document = require('./models/Document');
 const { authMiddleware } = require('./middleware/auth');
 const { errorHandler } = require('./middleware/errorHandler');
-const { limiter } = require('./middleware/rateLimiter');
+const { limiter, authLimiter, uploadLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
 
+// Security middleware
 app.use(helmet());
 app.use(compression());
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(limiter);
 
+// Request logging
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
+  next();
+});
+
+// Auth routes (public) - stricter rate limit
+app.use('/api/v1/auth', authLimiter, require('./routes/auth'));
+
+// Health check endpoint
+app.get('/api/v1/health', (req, res) => {
+  success(res, {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    blockchain: getBlockchainMode()
+  }, 'Service healthy');
+});
+
+// MongoDB connection
 mongoose.connect(process.env.MONGO_URI, {
   maxPoolSize: 10,
   serverSelectionTimeoutMS: 5000,
   socketTimeoutMS: 45000,
 })
 .then(() => console.log('MongoDB connected'))
-.catch(err => console.error('MongoDB connection error:', err));
+.catch(err => {
+  console.error('MongoDB connection error:', err.message);
+  process.exit(1);
+});
 
+// File upload configuration
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -50,80 +77,154 @@ const upload = multer({
   }
 });
 
-// Public routes (no auth required)
-app.post('/api/v1/issue', upload.single('file'), asyncHandler(async (req, res) => {
-  if (!req.file) {
-    throw new AppError('No file uploaded', 400);
+// Validation helpers
+function validateDocumentId(documentId) {
+  if (!documentId || typeof documentId !== 'string') {
+    throw new ValidationError('documentId is required and must be a string');
   }
+  if (!/^TC-\d{13}$/.test(documentId)) {
+    throw new ValidationError('Invalid documentId format. Expected: TC- followed by 13 digits');
+  }
+}
+
+function validateIssuer(issuer) {
+  if (!issuer || typeof issuer !== 'string') {
+    throw new ValidationError('issuer is required and must be a string');
+  }
+  if (issuer.trim().length === 0) {
+    throw new ValidationError('issuer cannot be empty');
+  }
+  if (issuer.length > 100) {
+    throw new ValidationError('issuer must be less than 100 characters');
+  }
+}
+
+// Public routes - Issue Document (upload limited)
+app.post('/api/v1/issue', uploadLimiter, upload.single('file'), asyncHandler(async (req, res) => {
+  if (!req.file) {
+    throw new ValidationError('No file uploaded');
+  }
+
+  const issuer = req.body.issuer || 'Unknown';
+  validateIssuer(issuer);
 
   const hash = generateHash(req.file.buffer);
   const documentId = `TC-${Date.now()}`;
-  const issuer = req.body.issuer || 'Unknown';
 
-  const txHash = await issueOnChain(documentId, hash);
+  let txHash;
+  try {
+    txHash = await issueOnChain(documentId, hash);
+  } catch (err) {
+    console.error('Blockchain issue failed:', err.message);
+    throw new AppError('Failed to issue document on blockchain', 502);
+  }
+
   const proof = generateHash(Buffer.from(hash + process.env.ZK_SECRET));
 
-  await Document.create({
-    documentId,
-    issuer,
-    fileName: req.file.originalname,
-    txHash,
-    proof
-  });
+  try {
+    await Document.create({
+      documentId,
+      issuer: issuer.trim(),
+      fileName: req.file.originalname,
+      txHash,
+      proof
+    });
+  } catch (err) {
+    if (err.code === 11000) {
+      throw new ValidationError('Document ID already exists');
+    }
+    throw err;
+  }
 
-  success(res, { documentId, hash, issuer, txHash, proof }, 'Document issued');
+  success(res, { 
+    documentId, 
+    hash, 
+    issuer: issuer.trim(), 
+    txHash, 
+    proof 
+  }, 'Document issued successfully');
 }));
 
-app.post('/api/v1/verify', upload.single('file'), asyncHandler(async (req, res) => {
+// Public routes - Verify Document
+app.post('/api/v1/verify', uploadLimiter, upload.single('file'), asyncHandler(async (req, res) => {
   if (!req.file) {
-    throw new AppError('No file uploaded', 400);
+    throw new ValidationError('No file uploaded');
   }
 
   const { documentId } = req.body;
-  if (!documentId) {
-    throw new AppError('documentId required', 400);
-  }
+  validateDocumentId(documentId);
 
   const uploadedHash = generateHash(req.file.buffer);
+  
+  // Find document in database
+  const doc = await Document.findOne({ documentId });
+  if (!doc) {
+    throw new NotFoundError('Document not found');
+  }
+
+  // Get hash from blockchain
   let storedHash = null;
+  let blockchainStatus = 'unavailable';
   
   try {
     storedHash = await getHashFromChain(documentId);
+    blockchainStatus = storedHash ? 'available' : 'not_found';
   } catch (err) {
-    console.log('Blockchain fetch failed:', err.message);
+    console.error('Blockchain fetch failed:', err.message);
+    blockchainStatus = 'error';
   }
 
-  const doc = await Document.findOne({ documentId });
-  if (!doc) {
-    throw new AppError('Document not found', 404);
-  }
-
+  // Verify ZK proof
   const recomputedProof = generateHash(Buffer.from(uploadedHash + process.env.ZK_SECRET));
   const zkValid = recomputedProof === doc.proof;
 
+  // Determine status
+  let status, message;
+  if (storedHash) {
+    if (uploadedHash === storedHash) {
+      status = 'valid';
+      message = 'Document is authentic and matches blockchain record';
+    } else {
+      status = 'tampered';
+      message = 'Document has been modified - does not match blockchain record';
+    }
+  } else {
+    status = zkValid ? 'valid' : 'tampered';
+    message = zkValid 
+      ? 'Document verified (blockchain unavailable, ZK proof valid)' 
+      : 'Document verification failed - does not match stored proof';
+  }
+
   success(res, {
-    status: uploadedHash === storedHash ? 'valid' : 'tampered',
-    message: uploadedHash === storedHash
-      ? 'Document is authentic'
-      : 'Document has been modified',
+    status,
+    message,
+    documentId: doc.documentId,
     issuer: doc.issuer,
     txHash: doc.txHash,
-    zkValid
+    zkValid,
+    blockchainStatus,
+    verifiedAt: new Date().toISOString()
   }, 'Verification complete');
 }));
 
-// Public documents route (no auth for now)
-app.get('/api/v1/documents', asyncHandler(async (req, res) => {
+// Protected routes - Get Documents (requires auth)
+app.get('/api/v1/documents', authMiddleware, asyncHandler(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 20;
+  const limit = Math.min(parseInt(req.query.limit) || 20, 100); // Max 100
   const skip = (page - 1) * limit;
 
-  const docs = await Document.find()
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit);
+  if (page < 1) {
+    throw new ValidationError('Page must be at least 1');
+  }
 
-  const total = await Document.countDocuments();
+  const [docs, total] = await Promise.all([
+    Document.find()
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Document.countDocuments()
+  ]);
 
   success(res, {
     documents: docs,
@@ -131,12 +232,45 @@ app.get('/api/v1/documents', asyncHandler(async (req, res) => {
       page,
       limit,
       total,
-      pages: Math.ceil(total / limit)
+      pages: Math.ceil(total / limit),
+      hasNext: page < Math.ceil(total / limit),
+      hasPrev: page > 1
     }
-  }, 'Documents retrieved');
+  }, 'Documents retrieved successfully');
 }));
 
+// Protected route - Get single document
+app.get('/api/v1/documents/:documentId', authMiddleware, asyncHandler(async (req, res) => {
+  const { documentId } = req.params;
+  validateDocumentId(documentId);
+
+  const doc = await Document.findOne({ documentId });
+  if (!doc) {
+    throw new NotFoundError('Document not found');
+  }
+
+  success(res, { document: doc }, 'Document retrieved');
+}));
+
+// 404 handler
+app.use((req, res) => {
+  error(res, 404, `Route ${req.method} ${req.path} not found`);
+});
+
+// Global error handler
 app.use(errorHandler);
 
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  mongoose.connection.close(false, () => {
+    console.log('MongoDB connection closed');
+    process.exit(0);
+  });
+});
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+});
