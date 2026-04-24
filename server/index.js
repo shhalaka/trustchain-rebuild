@@ -16,6 +16,9 @@ const { authMiddleware } = require('./middleware/auth');
 const { errorHandler } = require('./middleware/errorHandler');
 const { limiter } = require('./middleware/rateLimiter');
 
+const authRoutes = require('./routes/auth');
+const documentRoutes = require('./routes/documents');
+
 const app = express();
 
 app.use(helmet());
@@ -112,29 +115,12 @@ app.post('/api/v1/verify', upload.single('file'), asyncHandler(async (req, res) 
   }, 'Verification complete');
 }));
 
-// Public documents route (no auth for now)
-app.get('/api/v1/documents', asyncHandler(async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 20;
-  const skip = (page - 1) * limit;
-
-  const docs = await Document.find()
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit);
-
-  const total = await Document.countDocuments();
-
-  success(res, {
-    documents: docs,
-    pagination: {
-      page,
-      limit,
-      total,
-      pages: Math.ceil(total / limit)
-    }
-  }, 'Documents retrieved');
-}));
+// Mount modular routers so the /api/v1/auth and /api/v1/documents
+// route files actually reach Express instead of being dead code
+// (issue #11). The previous inline /api/v1/documents handler duplicated
+// routes/documents.js, so drop it in favour of the single source.
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/documents', documentRoutes);
 
 app.use(errorHandler);
 
