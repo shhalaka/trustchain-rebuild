@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+import { api } from '../api/client';
 
 function History() {
   const [documents, setDocuments] = useState([]);
@@ -26,26 +24,13 @@ function History() {
     setError('');
 
     try {
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        setError('Please login to view history');
-        setLoading(false);
-        return;
-      }
-
-      const res = await axios.get(`${API}/documents?page=${page}&limit=${pagination.limit}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const res = await api.get(`/documents?page=${page}&limit=${pagination.limit}`);
 
       setDocuments(res.data.data.documents);
       setPagination(res.data.data.pagination);
     } catch (err) {
       if (err.response?.status === 401) {
         setError('Session expired. Please login again.');
-        localStorage.removeItem('token');
       } else {
         setError(err.response?.data?.error || 'Failed to fetch documents');
       }

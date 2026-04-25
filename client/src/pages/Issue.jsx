@@ -1,9 +1,7 @@
 import React, { useState, useRef } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
+import { api } from '../api/client';
 import Spinner from '../components/Spinner';
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
 function Issue() {
   const [file, setFile] = useState(null);
@@ -90,7 +88,7 @@ function Issue() {
       formData.append('file', file);
       formData.append('issuer', issuer.trim());
 
-      const res = await axios.post(`${API}/issue`, formData, {
+      const res = await api.post('/issue', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
