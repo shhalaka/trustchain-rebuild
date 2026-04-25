@@ -66,13 +66,30 @@ function History() {
 
   if (loading && documents.length === 0) {
     return (
-      <div className="card loading">
-        <div className="skeleton-loader">
-          <div className="skeleton-header"></div>
-          <div className="skeleton-row"></div>
-          <div className="skeleton-row"></div>
-          <div className="skeleton-row"></div>
-        </div>
+      <div className="card">
+        <h2>Issued Documents</h2>
+        <table className="skeleton-table">
+          <thead>
+            <tr>
+              <th>Document ID</th>
+              <th>File Name</th>
+              <th>Issuer</th>
+              <th>Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <tr key={i}>
+                <td><div className="skeleton-cell medium"></div></td>
+                <td><div className="skeleton-cell long"></div></td>
+                <td><div className="skeleton-cell short"></div></td>
+                <td><div className="skeleton-cell short"></div></td>
+                <td><div className="skeleton-cell short"></div></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     );
   }

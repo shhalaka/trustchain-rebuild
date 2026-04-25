@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import Spinner from '../components/Spinner';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
@@ -152,13 +153,19 @@ function Verify() {
           />
         </div>
         <button type="submit" className="submit-btn" disabled={loading}>
-          {loading ? 'Verifying...' : 'Verify Document'}
+          {loading ? (
+            <>
+              <Spinner size={16} /> Verifying...
+            </>
+          ) : (
+            'Verify Document'
+          )}
         </button>
         {error && <p className="error">{error}</p>}
       </form>
 
       {result && (
-        <div className={`result ${result.status === 'tampered' ? 'tampered' : ''}`}>
+        <div className={`result fade-in ${result.status === 'tampered' ? 'tampered' : ''}`}>
           <h3>{result.message}</h3>
           
           <div className="result-details">

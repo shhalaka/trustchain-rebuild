@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import Spinner from '../components/Spinner';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
@@ -159,13 +160,19 @@ function Issue() {
           />
         </div>
         <button type="submit" className="submit-btn" disabled={loading}>
-          {loading ? 'Processing...' : 'Issue Document'}
+          {loading ? (
+            <>
+              <Spinner size={16} /> Processing...
+            </>
+          ) : (
+            'Issue Document'
+          )}
         </button>
         {error && <p className="error">{error}</p>}
       </form>
 
       {result && (
-        <div className="result">
+        <div className="result fade-in">
           <h3>Document Issued Successfully</h3>
           <div className="result-item">
             <strong>Document ID:</strong> 
