@@ -66,7 +66,7 @@ function History() {
 
   if (loading && documents.length === 0) {
     return (
-      <div className="card">
+      <div className="card history-card history-page">
         <h2>Issued Documents</h2>
         <table className="skeleton-table">
           <thead>
@@ -96,7 +96,7 @@ function History() {
 
   if (error) {
     return (
-      <div className="card error">
+      <div className="card error history-card history-page">
         <p>{error}</p>
         {error.includes('login') && (
           <a href="/login" className="btn-secondary">Go to Login</a>
@@ -106,7 +106,7 @@ function History() {
   }
 
   return (
-    <div className="card">
+    <div className="card history-card history-page">
       <h2>Issued Documents</h2>
       <p className="subtitle">View and manage your issued documents</p>
 

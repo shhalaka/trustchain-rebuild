@@ -10,21 +10,74 @@ import Login from './pages/Login';
 function Nav({ isAuthenticated, onLogout }) {
   const location = useLocation();
   const isActive = (path) => location.pathname === path;
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const navLinks = [
+    { to: '/', label: 'Issue Document' },
+    { to: '/verify', label: 'Verify Document' },
+    ...(isAuthenticated ? [{ to: '/history', label: 'History' }] : []),
+  ];
+
+  const toggleMenu = () => setMenuOpen((prev) => !prev);
+  const closeMenu = () => setMenuOpen(false);
 
   return (
     <nav className="nav">
-      <div className="nav-links">
-        <Link to="/" className={isActive('/') ? 'active' : ''}>Issue Document</Link>
-        <Link to="/verify" className={isActive('/verify') ? 'active' : ''}>Verify Document</Link>
-        {isAuthenticated && (
-          <Link to="/history" className={isActive('/history') ? 'active' : ''}>History</Link>
-        )}
+      <div className="nav-desktop">
+        <div className="nav-links">
+          {navLinks.map((link) => (
+            <Link
+              key={link.to}
+              to={link.to}
+              className={isActive(link.to) ? 'active' : ''}
+              onClick={closeMenu}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </div>
+        <div className="nav-actions">
+          {isAuthenticated ? (
+            <button onClick={onLogout} className="logout-btn">Logout</button>
+          ) : (
+            <Link to="/login" className={isActive('/login') ? 'active' : ''}>Login</Link>
+          )}
+        </div>
       </div>
-      <div className="nav-actions">
-        {isAuthenticated ? (
-          <button onClick={onLogout} className="logout-btn">Logout</button>
-        ) : (
-          <Link to="/login" className={isActive('/login') ? 'active' : ''}>Login</Link>
+
+      <div className="nav-mobile">
+        <button
+          className="hamburger"
+          onClick={toggleMenu}
+          aria-label="Toggle navigation menu"
+          aria-expanded={menuOpen}
+        >
+          <span className={menuOpen ? 'open' : ''} />
+          <span className={menuOpen ? 'open' : ''} />
+          <span className={menuOpen ? 'open' : ''} />
+        </button>
+        {menuOpen && (
+          <div className="mobile-menu">
+            {navLinks.map((link) => (
+              <Link
+                key={link.to}
+                to={link.to}
+                className={isActive(link.to) ? 'active' : ''}
+                onClick={closeMenu}
+              >
+                {link.label}
+              </Link>
+            ))}
+            {isAuthenticated ? (
+              <button onClick={() => { closeMenu(); onLogout(); }} className="logout-btn mobile-logout">
+                Logout
+              </button>
+            ) : (
+              <Link to="/login" className={isActive('/login') ? 'active' : ''} onClick={closeMenu}>
+                Login
+              </Link>
+            )}
+          </div>
         )}
       </div>
     </nav>

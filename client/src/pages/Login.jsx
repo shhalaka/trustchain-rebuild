@@ -11,7 +11,7 @@ function Login({ onLogin }) {
   const [showPassword, setShowPassword] = useState(false);
   const errorTimerRef = useRef(null);
 
-  const clearErrorAfterDelay = (delay = 4000) => {
+  const clearErrorAfterDelay = (delay = 8000) => {
     if (errorTimerRef.current) {
       clearTimeout(errorTimerRef.current);
     }
@@ -23,26 +23,26 @@ function Login({ onLogin }) {
   const validateForm = () => {
     if (!email.trim()) {
       setError('Email is required');
-      clearErrorAfterDelay();
+      clearErrorAfterDelay(8000);
       return false;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError('Invalid email format');
-      clearErrorAfterDelay();
+      clearErrorAfterDelay(8000);
       return false;
     }
 
     if (!password) {
       setError('Password is required');
-      clearErrorAfterDelay();
+      clearErrorAfterDelay(8000);
       return false;
     }
 
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
-      clearErrorAfterDelay();
+      clearErrorAfterDelay(8000);
       return false;
     }
 
@@ -72,7 +72,7 @@ function Login({ onLogin }) {
     } catch (err) {
       const message = err.response?.data?.error || 'Login failed';
       setError(message);
-      clearErrorAfterDelay();
+      clearErrorAfterDelay(8000);
 
       if (err.response?.status === 429) {
         toast.error('Too many attempts. Please try again later.');
