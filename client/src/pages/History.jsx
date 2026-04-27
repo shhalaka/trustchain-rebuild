@@ -6,6 +6,7 @@ function History() {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,
@@ -43,6 +44,20 @@ function History() {
     if (newPage < 1 || newPage > pagination.pages) return;
     fetchDocuments(newPage);
   };
+
+  const handleSearchChange = (e) => {
+    setSearch(e.target.value);
+  };
+
+  const filteredDocuments = documents.filter((doc) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      (doc.documentId && doc.documentId.toLowerCase().includes(q)) ||
+      (doc.fileName && doc.fileName.toLowerCase().includes(q)) ||
+      (doc.issuer && doc.issuer.toLowerCase().includes(q))
+    );
+  });
 
   const copyToClipboard = (text, label) => {
     navigator.clipboard.writeText(text);
@@ -93,72 +108,111 @@ function History() {
   return (
     <div className="card">
       <h2>Issued Documents</h2>
-      
+      <p className="subtitle">View and manage your issued documents</p>
+
       {documents.length === 0 ? (
-        <div className="empty-state">
+        <div className="empty-state enhanced">
+          <div className="empty-icon">📄</div>
           <p>No documents issued yet</p>
+          <span className="empty-hint">Issue your first document to see it here</span>
         </div>
       ) : (
         <>
-          <table className="history-table">
-            <thead>
-              <tr>
-                <th>Document ID</th>
-                <th>File Name</th>
-                <th>Issuer</th>
-                <th>Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {documents.map((doc) => (
-                <tr key={doc.documentId}>
-                  <td>
-                    <span className="doc-id">{doc.documentId}</span>
-                    <button 
-                      className="icon-btn"
-                      onClick={() => copyToClipboard(doc.documentId, 'Document ID')}
-                      title="Copy ID"
-                    >
-                      📋
-                    </button>
-                  </td>
-                  <td>{doc.fileName}</td>
-                  <td>{doc.issuer}</td>
-                  <td>{new Date(doc.createdAt).toLocaleDateString()}</td>
-                  <td>
-                    <div className="actions">
-                      <a 
-                        href={`https://explorer.apothem.network/txs/${doc.txHash}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="action-link"
-                      >
-                        View Tx
-                      </a>
-                    </div>
-                  </td>
+          <div className="history-toolbar">
+            <div className="search-box">
+              <input
+                type="text"
+                placeholder="Search by ID, filename, or issuer..."
+                value={search}
+                onChange={handleSearchChange}
+                className="search-input"
+              />
+              {search && (
+                <button className="search-clear" onClick={() => setSearch('')} title="Clear search">
+                  ×
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="table-wrapper">
+            <table className="history-table">
+              <thead>
+                <tr>
+                  <th>Document ID</th>
+                  <th>File Name</th>
+                  <th>Issuer</th>
+                  <th>Date</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredDocuments.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="no-results">
+                      No documents match your search
+                    </td>
+                  </tr>
+                ) : (
+                  filteredDocuments.map((doc) => (
+                    <tr key={doc.documentId}>
+                      <td>
+                        <span className="doc-id">{doc.documentId}</span>
+                        <button
+                          className="icon-btn"
+                          onClick={() => copyToClipboard(doc.documentId, 'Document ID')}
+                          title="Copy ID"
+                        >
+                          📋
+                        </button>
+                      </td>
+                      <td className="filename-cell" title={doc.fileName}>
+                        {doc.fileName}
+                      </td>
+                      <td>
+                        {doc.issuer && doc.issuer.trim() && doc.issuer.trim().toLowerCase() !== 'unknown' ? (
+                          <span className="issuer">{doc.issuer}</span>
+                        ) : (
+                          <span className="issuer unknown">Unknown</span>
+                        )}
+                      </td>
+                      <td>{new Date(doc.createdAt).toLocaleDateString()}</td>
+                      <td>
+                        <div className="actions">
+                          <a
+                            href={`https://testnet.xdcscan.com/tx/${doc.txHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="action-link"
+                            title="View transaction on XDC Testnet Explorer"
+                          >
+                            View Tx ↗
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
           {/* Pagination */}
           {pagination.pages > 1 && (
             <div className="pagination">
-              <button 
+              <button
                 className="page-btn"
                 onClick={() => handlePageChange(pagination.page - 1)}
                 disabled={!pagination.hasPrev}
               >
                 ← Previous
               </button>
-              
+
               <span className="page-info">
                 Page {pagination.page} of {pagination.pages}
               </span>
-              
-              <button 
+
+              <button
                 className="page-btn"
                 onClick={() => handlePageChange(pagination.page + 1)}
                 disabled={!pagination.hasNext}
@@ -169,7 +223,8 @@ function History() {
           )}
 
           <div className="results-info">
-            Showing {documents.length} of {pagination.total} documents
+            Showing {filteredDocuments.length} of {pagination.total} documents
+            {search && ` (filtered from ${documents.length} on this page)`}
           </div>
         </>
       )}
