@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -6,7 +8,8 @@ const compression = require('compression');
 const multer = require('multer');
 
 const { generateHash } = require('./utils/hash');
-const { issueOnChain, getHashFromChain, getBlockchainMode } = require('./utils/xdc');
+const { getBlockchainMode } = require('./utils/xdc');
+const BlockchainService = require('./services/blockchainService');
 const { asyncHandler } = require('./utils/asyncHandler');
 const { success, error } = require('./utils/response');
 const { AppError, ValidationError, NotFoundError } = require('./errors/AppError');
@@ -108,17 +111,18 @@ app.post('/api/v1/issue', uploadLimiter, upload.single('file'), asyncHandler(asy
   const issuer = req.body.issuer || 'Unknown';
   validateIssuer(issuer);
 
-  const hash = generateHash(req.file.buffer);
   const documentId = `TC-${Date.now()}`;
 
-  let txHash;
+  // 1. Hash document (SHA-256) and call contract.issue(hash) via BlockchainService
+  let result;
   try {
-    txHash = await issueOnChain(documentId, hash);
+    result = await BlockchainService.issueCertificate(documentId, req.file.buffer);
   } catch (err) {
     console.error('Blockchain issue failed:', err.message);
     throw new AppError('Failed to issue document on blockchain', 502);
   }
 
+  const { hash, txHash } = result;
   const proof = generateHash(Buffer.from(hash + process.env.ZK_SECRET));
 
   try {
@@ -126,6 +130,7 @@ app.post('/api/v1/issue', uploadLimiter, upload.single('file'), asyncHandler(asy
       documentId,
       issuer: issuer.trim(),
       fileName: req.file.originalname,
+      hash,
       txHash,
       proof
     });
@@ -136,12 +141,12 @@ app.post('/api/v1/issue', uploadLimiter, upload.single('file'), asyncHandler(asy
     throw err;
   }
 
-  success(res, { 
-    documentId, 
-    hash, 
-    issuer: issuer.trim(), 
-    txHash, 
-    proof 
+  success(res, {
+    documentId,
+    hash,
+    issuer: issuer.trim(),
+    txHash,
+    proof
   }, 'Document issued successfully');
 }));
 
@@ -155,54 +160,54 @@ app.post('/api/v1/verify', uploadLimiter, upload.single('file'), asyncHandler(as
   validateDocumentId(documentId);
 
   const uploadedHash = generateHash(req.file.buffer);
-  
-  // Find document in database
-  const doc = await Document.findOne({ documentId });
-  if (!doc) {
-    throw new NotFoundError('Document not found');
-  }
 
-  // Get hash from blockchain
-  let storedHash = null;
+  // 1. Call contract.verifyCert(documentId) to get stored hash, compare with uploadedHash
+  let chainResult;
   let blockchainStatus = 'unavailable';
-  
+
   try {
-    storedHash = await getHashFromChain(documentId);
-    blockchainStatus = storedHash ? 'available' : 'not_found';
+    chainResult = await BlockchainService.verifyHash(documentId, uploadedHash);
+    blockchainStatus = chainResult.onChain ? (chainResult.exists ? 'verified' : 'mismatch') : 'not_found';
   } catch (err) {
-    console.error('Blockchain fetch failed:', err.message);
+    console.error('Blockchain verify failed:', err.message);
     blockchainStatus = 'error';
   }
 
-  // Verify ZK proof
-  const recomputedProof = generateHash(Buffer.from(uploadedHash + process.env.ZK_SECRET));
-  const zkValid = recomputedProof === doc.proof;
+  // 2. Fallback: check local DB for existence
+  const doc = await Document.findOne({ documentId });
 
   // Determine status
   let status, message;
-  if (storedHash) {
-    if (uploadedHash === storedHash) {
+  if (chainResult && chainResult.onChain) {
+    if (chainResult.exists) {
       status = 'valid';
       message = 'Document is authentic and matches blockchain record';
     } else {
       status = 'tampered';
       message = 'Document has been modified - does not match blockchain record';
     }
-  } else {
+  } else if (doc) {
+    // Fallback to local DB ZK proof if blockchain unavailable
+    const recomputedProof = generateHash(Buffer.from(uploadedHash + process.env.ZK_SECRET));
+    const zkValid = recomputedProof === doc.proof;
     status = zkValid ? 'valid' : 'tampered';
-    message = zkValid 
-      ? 'Document verified (blockchain unavailable, ZK proof valid)' 
+    message = zkValid
+      ? 'Document verified (blockchain unavailable, ZK proof valid)'
       : 'Document verification failed - does not match stored proof';
+  } else {
+    status = 'not_found';
+    message = 'Document not found in database or blockchain';
   }
 
   success(res, {
     status,
     message,
-    documentId: doc.documentId,
-    issuer: doc.issuer,
-    txHash: doc.txHash,
-    zkValid,
+    documentId,
+    issuer: doc?.issuer || null,
+    txHash: doc?.txHash || null,
     blockchainStatus,
+    onChain: chainResult?.onChain || false,
+    existsOnChain: chainResult?.exists || false,
     verifiedAt: new Date().toISOString()
   }, 'Verification complete');
 }));
