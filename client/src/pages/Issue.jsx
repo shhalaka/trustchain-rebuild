@@ -1,69 +1,24 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { QRCodeCanvas } from 'qrcode.react';
 import { api } from '../api/client';
 import Spinner from '../components/Spinner';
+import FileUpload from '../components/FileUpload';
 
 function Issue() {
   const [file, setFile] = useState(null);
-  const [fileName, setFileName] = useState('');
   const [issuer, setIssuer] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const fileInputRef = useRef(null);
 
-  const handleFileSelect = (e) => {
-    const selectedFile = e.target.files[0];
-    if (selectedFile) {
-      // Validate file size (10MB)
-      if (selectedFile.size > 10 * 1024 * 1024) {
-        setError('File too large. Maximum size is 10MB');
-        return;
-      }
-      
-      // Validate file type
-      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-      if (!allowedTypes.includes(selectedFile.type)) {
-        setError('Invalid file type. Only PDF, JPG, PNG allowed');
-        return;
-      }
-
-      setFile(selectedFile);
-      setFileName(selectedFile.name);
-      setError('');
-    }
+  const handleFileSelect = (selectedFile) => {
+    setFile(selectedFile);
+    if (selectedFile) setError('');
   };
 
-  const handleDropZoneClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) {
-      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-      if (!allowedTypes.includes(droppedFile.type)) {
-        setError('Invalid file type. Only PDF, JPG, PNG allowed');
-        return;
-      }
-      if (droppedFile.size > 10 * 1024 * 1024) {
-        setError('File too large. Maximum size is 10MB');
-        return;
-      }
-      
-      setFile(droppedFile);
-      setFileName(droppedFile.name);
-      setError('');
-    }
+  const handleFileError = (msg) => {
+    setError(msg);
   };
 
   const handleSubmit = async (e) => {
@@ -100,7 +55,6 @@ function Issue() {
       
       // Reset form
       setFile(null);
-      setFileName('');
       setIssuer('');
     } catch (err) {
       const message = err.response?.data?.error || 'Failed to issue document';
@@ -117,7 +71,7 @@ function Issue() {
   };
 
   const getVerifyUrl = (docId) => {
-    const base = window.location.origin;
+    const base = import.meta.env.VITE_APP_URL || window.location.origin;
     return `${base}/verify?docId=${encodeURIComponent(docId)}`;
   };
 
@@ -138,33 +92,13 @@ function Issue() {
     <div className="card form-card">
       <h2>Issue Document</h2>
       <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label>Document File</label>
-          <div 
-            className="drop-zone" 
-            onClick={handleDropZoneClick}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-          >
-            <input 
-              ref={fileInputRef}
-              type="file" 
-              onChange={handleFileSelect}
-              accept=".pdf,.jpg,.jpeg,.png"
-              style={{ display: 'none' }}
-            />
-            <div className="drop-zone-content">
-              {fileName ? (
-                <span className="file-name">{fileName}</span>
-              ) : (
-                <>
-                  <span className="drop-zone-text">Click or drag file here</span>
-                  <span className="drop-zone-hint">PDF, JPG, or PNG up to 10MB</span>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+        <FileUpload
+          onFileSelect={handleFileSelect}
+          onError={handleFileError}
+          label="Document File"
+          placeholderText="Click or drag file here"
+          hintText="PDF, JPG, or PNG up to 10MB"
+        />
         <div className="form-group">
           <label>Issuer Name *</label>
           <input 
