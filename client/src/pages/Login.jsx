@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../api/client';
 import Spinner from '../components/Spinner';
@@ -9,29 +9,43 @@ function Login({ onLogin }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const errorTimerRef = useRef(null);
+
+  const clearErrorAfterDelay = (delay = 4000) => {
+    if (errorTimerRef.current) {
+      clearTimeout(errorTimerRef.current);
+    }
+    errorTimerRef.current = setTimeout(() => {
+      setError('');
+    }, delay);
+  };
 
   const validateForm = () => {
     if (!email.trim()) {
       setError('Email is required');
+      clearErrorAfterDelay();
       return false;
     }
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError('Invalid email format');
+      clearErrorAfterDelay();
       return false;
     }
-    
+
     if (!password) {
       setError('Password is required');
+      clearErrorAfterDelay();
       return false;
     }
-    
+
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
+      clearErrorAfterDelay();
       return false;
     }
-    
+
     return true;
   };
 
@@ -58,7 +72,8 @@ function Login({ onLogin }) {
     } catch (err) {
       const message = err.response?.data?.error || 'Login failed';
       setError(message);
-      
+      clearErrorAfterDelay();
+
       if (err.response?.status === 429) {
         toast.error('Too many attempts. Please try again later.');
       } else {
@@ -68,6 +83,14 @@ function Login({ onLogin }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (errorTimerRef.current) {
+        clearTimeout(errorTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="card login-card">
@@ -81,10 +104,7 @@ function Login({ onLogin }) {
             type="email"
             placeholder="admin@trustchain.com"
             value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setError('');
-            }}
+            onChange={(e) => setEmail(e.target.value)}
             disabled={loading}
             autoComplete="email"
           />
@@ -97,10 +117,7 @@ function Login({ onLogin }) {
               type={showPassword ? 'text' : 'password'}
               placeholder="Enter password"
               value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setError('');
-              }}
+              onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
               autoComplete="current-password"
             />
@@ -128,7 +145,12 @@ function Login({ onLogin }) {
           )}
         </button>
         
-        {error && <p className="error">{error}</p>}
+        {error && (
+          <div className="error-message">
+            <span className="error-icon">&#9888;</span>
+            <span className="error-text">{error}</span>
+          </div>
+        )}
       </form>
     </div>
   );

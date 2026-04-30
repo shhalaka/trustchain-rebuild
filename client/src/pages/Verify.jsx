@@ -199,14 +199,14 @@ function Verify() {
             {result.txHash && (
               <div className="result-item">
                 <strong>Transaction:</strong>
-                <a 
-                  href={`https://explorer.apothem.network/txs/${result.txHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="tx-link"
-                >
-                  View on Explorer
-                </a>
+                        <a 
+                          href={`https://testnet.xdcscan.com/tx/${result.txHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="tx-link"
+                        >
+                          View on Explorer ↗
+                        </a>
               </div>
             )}
             

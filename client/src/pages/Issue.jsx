@@ -183,9 +183,18 @@ function Issue() {
             </button>
           </div>
           <div className="result-item">
-            <strong>Transaction:</strong> 
+            <strong>Transaction:</strong>
             <span className="tx-hash">{result.txHash}</span>
-            <button 
+            <a
+              href={`https://testnet.xdcscan.com/tx/${result.txHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="tx-link"
+              style={{ marginLeft: '8px' }}
+            >
+              View ↗
+            </a>
+            <button
               className="copy-btn"
               onClick={() => copyToClipboard(result.txHash, 'Transaction hash')}
             >

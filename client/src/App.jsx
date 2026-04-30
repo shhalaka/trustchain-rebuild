@@ -67,10 +67,10 @@ function App() {
   return (
     <BrowserRouter>
       <div className="app">
-        <Toaster 
+        <Toaster
           position="top-right"
           toastOptions={{
-            duration: 4000,
+            duration: 6000,
             style: {
               background: '#1a1a1a',
               color: '#fff',
