@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import Spinner from '../components/Spinner';
 
@@ -11,6 +12,15 @@ function Verify() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
+  const [searchParams] = useSearchParams();
+
+  // Auto-fill documentId from URL query param
+  useEffect(() => {
+    const docId = searchParams.get('docId');
+    if (docId) {
+      setDocumentId(docId);
+    }
+  }, [searchParams]);
 
   const handleFileSelect = (e) => {
     const selectedFile = e.target.files[0];

@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import toast from 'react-hot-toast';
+import { QRCodeCanvas } from 'qrcode.react';
 import { api } from '../api/client';
 import Spinner from '../components/Spinner';
 
@@ -115,6 +116,24 @@ function Issue() {
     toast.success(`${label} copied to clipboard`);
   };
 
+  const getVerifyUrl = (docId) => {
+    const base = window.location.origin;
+    return `${base}/verify?docId=${encodeURIComponent(docId)}`;
+  };
+
+  const downloadQR = () => {
+    if (!result?.documentId) return;
+    const canvas = document.getElementById('issue-qr-code');
+    if (!canvas) return;
+    const link = document.createElement('a');
+    link.download = `trustchain-${result.documentId}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    toast.success('QR code downloaded');
+  };
+
+  const qrUrl = result ? getVerifyUrl(result.documentId) : '';
+
   return (
     <div className="card form-card">
       <h2>Issue Document</h2>
@@ -205,6 +224,29 @@ function Issue() {
             <strong>Issuer:</strong> <span>{result.issuer}</span>
           </div>
           <span className="badge badge-success">Verified on Blockchain</span>
+
+          <div className="qr-section">
+            <h4>Scan to Verify</h4>
+            <div className="qr-wrapper">
+              <QRCodeCanvas
+                id="issue-qr-code"
+                value={qrUrl}
+                size={180}
+                level="M"
+                includeMargin={true}
+                bgColor="#0a0a0a"
+                fgColor="#ffffff"
+              />
+            </div>
+            <div className="qr-actions">
+              <button className="copy-btn" onClick={() => copyToClipboard(qrUrl, 'Verification URL')}>
+                Copy Link
+              </button>
+              <button className="copy-btn" onClick={downloadQR}>
+                Download PNG
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
