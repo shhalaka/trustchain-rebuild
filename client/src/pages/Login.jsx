@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
+import { api } from '../api/client';
 import Spinner from '../components/Spinner';
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
 function Login({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -46,7 +44,7 @@ function Login({ onLogin }) {
     setError('');
 
     try {
-      const res = await axios.post(`${API}/auth/login`, {
+      const res = await api.post('/auth/login', {
         email: email.trim(),
         password
       });

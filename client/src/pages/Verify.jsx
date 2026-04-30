@@ -1,9 +1,7 @@
 import React, { useState, useRef } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
+import { api } from '../api/client';
 import Spinner from '../components/Spinner';
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
 function Verify() {
   const [file, setFile] = useState(null);
@@ -89,7 +87,7 @@ function Verify() {
       formData.append('file', file);
       formData.append('documentId', documentId.trim());
 
-      const res = await axios.post(`${API}/verify`, formData, {
+      const res = await api.post('/verify', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
