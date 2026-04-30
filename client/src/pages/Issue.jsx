@@ -116,7 +116,7 @@ function Issue() {
   };
 
   return (
-    <div className="card">
+    <div className="card form-card">
       <h2>Issue Document</h2>
       <form onSubmit={handleSubmit}>
         <div className="form-group">

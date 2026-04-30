@@ -24,12 +24,15 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      const isLoginRequest = error.config?.url?.includes('/auth/login');
+      const requestUrl = error.config?.url || '';
+      const isLoginRequest = requestUrl.includes('/auth/login');
       if (!isLoginRequest) {
         localStorage.removeItem('token');
         localStorage.removeItem('tokenExpiry');
         window.location = '/login';
       }
+      // For login requests, let the 401 propagate to the UI so the user
+      // sees "Invalid credentials" without a page refresh.
     }
     return Promise.reject(error);
   }

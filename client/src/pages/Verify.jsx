@@ -110,7 +110,7 @@ function Verify() {
   };
 
   return (
-    <div className="card">
+    <div className="card form-card">
       <h2>Verify Document</h2>
       <form onSubmit={handleSubmit}>
         <div className="form-group">
