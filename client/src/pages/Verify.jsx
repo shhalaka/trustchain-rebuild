@@ -1,17 +1,16 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import Spinner from '../components/Spinner';
+import FileUpload from '../components/FileUpload';
 
 function Verify() {
   const [file, setFile] = useState(null);
-  const [fileName, setFileName] = useState('');
   const [documentId, setDocumentId] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const fileInputRef = useRef(null);
   const [searchParams] = useSearchParams();
 
   // Auto-fill documentId from URL query param
@@ -22,55 +21,13 @@ function Verify() {
     }
   }, [searchParams]);
 
-  const handleFileSelect = (e) => {
-    const selectedFile = e.target.files[0];
-    if (selectedFile) {
-      if (selectedFile.size > 10 * 1024 * 1024) {
-        setError('File too large. Maximum size is 10MB');
-        return;
-      }
-      
-      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-      if (!allowedTypes.includes(selectedFile.type)) {
-        setError('Invalid file type. Only PDF, JPG, PNG allowed');
-        return;
-      }
-
-      setFile(selectedFile);
-      setFileName(selectedFile.name);
-      setError('');
-    }
+  const handleFileSelect = (selectedFile) => {
+    setFile(selectedFile);
+    if (selectedFile) setError('');
   };
 
-  const handleDropZoneClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) {
-      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-      if (!allowedTypes.includes(droppedFile.type)) {
-        setError('Invalid file type. Only PDF, JPG, PNG allowed');
-        return;
-      }
-      if (droppedFile.size > 10 * 1024 * 1024) {
-        setError('File too large. Maximum size is 10MB');
-        return;
-      }
-      
-      setFile(droppedFile);
-      setFileName(droppedFile.name);
-      setError('');
-    }
+  const handleFileError = (msg) => {
+    setError(msg);
   };
 
   const handleSubmit = async (e) => {
@@ -123,33 +80,13 @@ function Verify() {
     <div className="card form-card">
       <h2>Verify Document</h2>
       <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label>Document File</label>
-          <div 
-            className="drop-zone" 
-            onClick={handleDropZoneClick}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-          >
-            <input 
-              ref={fileInputRef}
-              type="file" 
-              onChange={handleFileSelect}
-              accept=".pdf,.jpg,.jpeg,.png"
-              style={{ display: 'none' }}
-            />
-            <div className="drop-zone-content">
-              {fileName ? (
-                <span className="file-name">{fileName}</span>
-              ) : (
-                <>
-                  <span className="drop-zone-text">Click or drag file here</span>
-                  <span className="drop-zone-hint">Upload the original document</span>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+        <FileUpload
+          onFileSelect={handleFileSelect}
+          onError={handleFileError}
+          label="Document File"
+          placeholderText="Click or drag file here"
+          hintText="Upload the original document"
+        />
         <div className="form-group">
           <label>Document ID</label>
           <input 

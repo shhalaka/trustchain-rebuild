@@ -15,7 +15,7 @@ function Nav({ isAuthenticated, onLogout }) {
   const navLinks = [
     { to: '/', label: 'Issue Document' },
     { to: '/verify', label: 'Verify Document' },
-    ...(isAuthenticated ? [{ to: '/history', label: 'History' }] : []),
+    ...(isAuthenticated ? [{ to: '/history', label: 'Issued Documents' }] : []),
   ];
 
   const toggleMenu = () => setMenuOpen((prev) => !prev);
