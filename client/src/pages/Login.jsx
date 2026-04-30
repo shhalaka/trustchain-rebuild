@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import Spinner from '../components/Spinner';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
@@ -120,7 +121,13 @@ function Login({ onLogin }) {
           className="submit-btn" 
           disabled={loading}
         >
-          {loading ? 'Logging in...' : 'Login'}
+          {loading ? (
+            <>
+              <Spinner size={16} /> Logging in...
+            </>
+          ) : (
+            'Login'
+          )}
         </button>
         
         {error && <p className="error">{error}</p>}
