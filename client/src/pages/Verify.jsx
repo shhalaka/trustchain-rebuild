@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
+import { QRCodeCanvas } from 'qrcode.react';
 import { api } from '../api/client';
 import Spinner from '../components/Spinner';
 import FileUpload from '../components/FileUpload';
@@ -28,6 +29,27 @@ function Verify() {
 
   const handleFileError = (msg) => {
     setError(msg);
+  };
+
+  const copyToClipboard = (text, label) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied to clipboard`);
+  };
+
+  const getVerifyUrl = (docId) => {
+    const base = import.meta.env.VITE_APP_URL || window.location.origin;
+    return `${base}/verify?docId=${encodeURIComponent(docId)}`;
+  };
+
+  const downloadQR = () => {
+    if (!result?.documentId) return;
+    const canvas = document.getElementById('verify-qr-code');
+    if (!canvas) return;
+    const link = document.createElement('a');
+    link.download = `trustchain-${result.documentId}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    toast.success('QR code downloaded');
   };
 
   const handleSubmit = async (e) => {
@@ -164,6 +186,31 @@ function Verify() {
               </div>
             )}
           </div>
+
+          {result.status === 'valid' && (
+            <div className="qr-section">
+              <h4>Scan to Verify</h4>
+              <div className="qr-wrapper">
+                <QRCodeCanvas
+                  id="verify-qr-code"
+                  value={getVerifyUrl(result.documentId)}
+                  size={180}
+                  level="M"
+                  includeMargin={true}
+                  bgColor="#0a0a0a"
+                  fgColor="#ffffff"
+                />
+              </div>
+              <div className="qr-actions">
+                <button className="copy-btn" onClick={() => copyToClipboard(getVerifyUrl(result.documentId), 'Verification URL')}>
+                  Copy Link
+                </button>
+                <button className="copy-btn" onClick={downloadQR}>
+                  Download PNG
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
