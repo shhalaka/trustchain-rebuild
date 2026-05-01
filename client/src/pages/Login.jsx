@@ -94,15 +94,15 @@ function Login({ onLogin }) {
 
   return (
     <div className="card login-card">
-      <h2>Admin Login</h2>
-      <p className="subtitle">Access document history and management</p>
+      <h2>Admin Dashboard Access</h2>
+      <p className="subtitle">Issue documents and manage verification records</p>
       
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label>Email</label>
           <input
             type="email"
-            placeholder="admin@trustchain.com"
+            placeholder="Enter email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={loading}

@@ -149,7 +149,10 @@ function App() {
         
         <main className="main">
           <Routes>
-            <Route path="/" element={<Issue />} />
+            <Route 
+              path="/" 
+              element={isAuthenticated ? <Issue /> : <Navigate to="/login" />} 
+            />
             <Route path="/verify" element={<Verify />} />
             <Route 
               path="/history" 
