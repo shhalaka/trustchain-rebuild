@@ -8,7 +8,6 @@ const compression = require('compression');
 const multer = require('multer');
 
 const { generateHash } = require('./utils/hash');
-const { getBlockchainMode } = require('./utils/xdc');
 const BlockchainService = require('./services/blockchainService');
 const { asyncHandler } = require('./utils/asyncHandler');
 const { success, error } = require('./utils/response');
@@ -18,6 +17,8 @@ const Document = require('./models/Document');
 const { authMiddleware } = require('./middleware/auth');
 const { errorHandler } = require('./middleware/errorHandler');
 const { limiter, authLimiter, uploadLimiter } = require('./middleware/rateLimiter');
+
+// NOTE: routes/documents.js is defined but not mounted here (kept for future use)
 
 const app = express();
 
@@ -31,12 +32,6 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(limiter);
 
-// Request logging
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
-  next();
-});
-
 // Auth routes (public) - stricter rate limit
 app.use('/api/v1/auth', authLimiter, require('./routes/auth'));
 
@@ -47,7 +42,7 @@ app.get('/api/v1/health', (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-    blockchain: getBlockchainMode()
+    blockchain: 'mock'
   }, 'Service healthy');
 });
 

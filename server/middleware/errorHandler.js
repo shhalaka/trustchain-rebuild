@@ -1,10 +1,7 @@
-const { AppError } = require('../errors/AppError');
-
 const errorHandler = (err, req, res, next) => {
-  // Log error details
+  // Log error details (keep for debugging)
   console.error('Error:', {
     message: err.message,
-    stack: err.stack,
     path: req.path,
     method: req.method,
     timestamp: new Date().toISOString(),
